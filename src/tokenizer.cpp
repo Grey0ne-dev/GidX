@@ -31,7 +31,6 @@ std::string strip_html(const std::string& html) {
 
     for (size_t i = 0; i < html.size(); ++i) {
         if (!in_tag && html[i] == '<') {
-            // Check for <script or <style tags
             if (i + 7 < html.size()) {
                 std::string tag_start = html.substr(i + 1, 6);
                 std::transform(tag_start.begin(), tag_start.end(), tag_start.begin(), ::tolower);
@@ -39,7 +38,7 @@ std::string strip_html(const std::string& html) {
                     in_script = true;
                 }
             }
-            // Check for closing </script> or </style>
+            
             if (i + 2 < html.size() && html[i + 1] == '/') {
                 std::string close_tag = html.substr(i + 2, 6);
                 std::transform(close_tag.begin(), close_tag.end(), close_tag.begin(), ::tolower);
@@ -50,7 +49,7 @@ std::string strip_html(const std::string& html) {
             in_tag = true;
         } else if (in_tag && html[i] == '>') {
             in_tag = false;
-            result += ' '; // replace tag with space
+            result += ' ';
         } else if (!in_tag && !in_script) {
             result += html[i];
         }

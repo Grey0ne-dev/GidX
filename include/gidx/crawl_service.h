@@ -6,7 +6,6 @@
 
 namespace gidx {
 
-// Callback invoked when a worker returns crawl results
 struct CrawlResult {
     uint32_t doc_id;
     std::string url;
@@ -19,7 +18,6 @@ struct CrawlResult {
 
 using CrawlCallback = std::function<void(const CrawlResult&)>;
 
-// gRPC Worker server — fetches URLs and returns tokens
 class CrawlWorker {
 public:
     explicit CrawlWorker(const std::string& listen_addr = "0.0.0.0:50051");
@@ -33,7 +31,6 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-// gRPC Master client — dispatches crawl tasks to workers
 class CrawlMaster {
 public:
     CrawlMaster();

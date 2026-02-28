@@ -22,8 +22,6 @@ public:
         response->set_url(request->url());
 
         try {
-            // For now, use a simple curl-like fetch (placeholder)
-            // In production this would use libcurl or asio
             std::string html = fetch_url(request->url());
 
             if (html.empty()) {
@@ -32,16 +30,14 @@ public:
                 return grpc::Status::OK;
             }
 
-            // Tokenize
             auto tokens = tokenize(html);
             for (const auto& t : tokens) {
                 response->add_tokens(t);
             }
 
-            // Raw text for snippets
+            
             response->set_raw_text(strip_html(html));
 
-            // Extract links
             auto links = extract_links(html, request->url());
             for (const auto& l : links) {
                 response->add_discovered_urls(l);
@@ -56,8 +52,8 @@ public:
         return grpc::Status::OK;
     }
 
-    grpc::Status ReportStatus(grpc::ServerContext* /*context*/,
-                              const gidx::StatusRequest* /*request*/,
+    grpc::Status ReportStatus(grpc::ServerContext*,
+                              const gidx::StatusRequest*,
                               gidx::StatusResponse* response) override {
         response->set_pages_crawled(pages_crawled_);
         response->set_pages_failed(pages_failed_);
@@ -68,9 +64,7 @@ private:
     uint32_t pages_crawled_ = 0;
     uint32_t pages_failed_ = 0;
 
-    // Simple URL fetch using curl command
     static std::string fetch_url(const std::string& url) {
-        // Use popen for simplicity; production would use libcurl
         std::string cmd = "curl -sL --max-time 10 --max-filesize 1048576 " + url + " 2>/dev/null";
         FILE* pipe = popen(cmd.c_str(), "r");
         if (!pipe) return "";
@@ -84,10 +78,8 @@ private:
         return result;
     }
 
-    // Extract href links from HTML
     static std::vector<std::string> extract_links(const std::string& html, const std::string& base_url) {
         std::vector<std::string> links;
-        // Simple regex for href attributes
         std::regex href_re(R"(href\s*=\s*["']([^"']+)["'])", std::regex::icase);
         auto begin = std::sregex_iterator(html.begin(), html.end(), href_re);
         auto end = std::sregex_iterator();
@@ -101,13 +93,12 @@ private:
 
         for (auto it = begin; it != end; ++it) {
             std::string link = (*it)[1].str();
-            // Resolve relative URLs
             if (link.starts_with("//")) {
                 link = "https:" + link;
             } else if (link.starts_with("/")) {
                 link = base_domain + link;
             } else if (!link.starts_with("http")) {
-                continue; // skip mailto:, javascript:, etc.
+                continue;
             }
             links.push_back(link);
         }
@@ -115,7 +106,6 @@ private:
     }
 };
 
-// Worker pimpl
 struct CrawlWorker::Impl {
     std::string listen_addr;
     std::unique_ptr<grpc::Server> server;
@@ -143,8 +133,6 @@ void CrawlWorker::shutdown() {
     }
 }
 
-// --- Master (Client) ---
-
 struct CrawlMaster::Impl {
     struct WorkerChannel {
         std::string address;
@@ -167,7 +155,6 @@ CrawlResult CrawlMaster::crawl(const std::string& url, uint32_t doc_id) {
         return {doc_id, url, {}, "", false, "No workers available", {}};
     }
 
-    // Round-robin worker selection
     auto& worker = impl_->workers[impl_->next_worker % impl_->workers.size()];
     impl_->next_worker++;
 
